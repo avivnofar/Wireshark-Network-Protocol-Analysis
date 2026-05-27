@@ -21,10 +21,10 @@ The portfolio is structured into three dedicated labs mapped to the OSI model la
   ![DHCP DORA Cycle](images/01-dhcp-dns-arp-lifecycle/01_wireshark_dora_RM.png)
 
 * **Phase B: Hardware Address Resolution via ARP** Prior to forwarding packets to the default gateway, the host discovers the physical MAC address bound to the target gateway IP using an ARP broadcast request and receiving a dedicated Unicast reply:
-  ![ARP Hardware Mapping](images/01-dhcp-dns-arp-lifecycle/02_wireshark_arp_RM.jpg)
+  ![ARP Hardware Mapping](images/01-dhcp-dns-arp-lifecycle/02_wireshark_arp_RM.png)
 
 * **Phase C: Domain Name Resolution (DNS)** Following a local cache clear (`/flushdns`), the system initiates a raw infrastructure query to the DNS server over UDP port 53 to resolve the necessary IPv4 and IPv6 target destination addresses:
-  ![DNS Resolution](images/01-dhcp-dns-arp-lifecycle/03_wireshark_dns_RM.jpg)
+  ![DNS Resolution](images/01-dhcp-dns-arp-lifecycle/03_wireshark_dns_RM.png)
 
 🔍 **[View Full Documentation & PCAP Files for Project 1](./wireshark-labs/core-infrastructure-protocols/)**
 
@@ -36,13 +36,13 @@ The portfolio is structured into three dedicated labs mapped to the OSI model la
 #### 📊 Top Visual Findings from the Lab:
 
 * **Phase A: TCP Handshake & TLS Encrypted Channel Establishment** Analysis of the core Three-Way Handshake (`SYN`, `SYN-ACK`, `ACK`) followed immediately by the cryptographic key exchange within the TLS Client Hello and Server Hello frameworks:
-  ![TCP & TLS Handshake](images/02-icmp-tcp-http-https-deepdive/01_tcp_tls_handshake_RM.jpg)
+  ![TCP & TLS Handshake](images/02-icmp-tcp-http-https-deepdive/01_tcp_tls_handshake_RM.png)
 
 * **Phase B: Empirical Comparison Matrix - HTTP vs. HTTPS** A structured comparison tracking packet count differentials, certificate validity checks (OCSP), and payload readability constraints between the two web transit types:
   ![HTTP vs HTTPS Comparison](images/02-icmp-tcp-http-https-deepdive/02_http_https_comparison_RM.png)
 
 * **Phase C: Path Analysis & Network Resilience (ICMP Ping & Tracert)** Monitoring Echo Request and Echo Reply sequences while calculating Time-To-Live (TTL) decrements to mathematically deduce the exact number of intermediate routing hops to the destination:
-  ![ICMP Tracert Analysis](images/02-icmp-tcp-http-https-deepdive/03_icmp_tracert_wireshark_RM.jpg)
+  ![ICMP Tracert Analysis](images/02-icmp-tcp-http-https-deepdive/03_icmp_tracert_wireshark_RM.png)
 
 🔍 **[View Full Documentation & PCAP Files for Project 2](./wireshark-labs/web-transit-protocols/)**
 
@@ -53,4 +53,4 @@ The portfolio is structured into three dedicated labs mapped to the OSI model la
 
 #### 📊 Top Visual Findings from the Lab:
 
-* **Phase A: Plaintext Credential Exposure in FTP** Demonstrating how the FTP protocol transmits authorization primitives (`USER` and `PASS`) unencrypted, allowing instant
+* **Phase A: Plaintext Credential Exposure in FTP** Demonstrating how the FTP protocol transmits authorization primitives (`USER` and `PASS`) unencrypted

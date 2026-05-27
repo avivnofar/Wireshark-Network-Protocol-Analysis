@@ -51,7 +51,7 @@ Before the host can send an IP packet to its local gateway or any peer on the su
 * **The Broadcast:** The packet is sent to the broadcast MAC address `ff:ff:ff:ff:ff:ff` asking: *"Who has 192.168.1.1? Tell 192.168.1.X"*.
 * **The Reply:** The gateway intercepts the broadcast and returns a unicast ARP Reply stating its exact physical MAC address, allowing the host to build its local L2 frame headers and populate its local ARP table.
 
-![ARP Mapping Capture](screenshots/RM_resources/02_wireshark_arp_RM.jpg)
+![ARP Mapping Capture](screenshots/RM_resources/02_wireshark_arp_RM.png)
 
 ---
 
@@ -71,7 +71,6 @@ This lab demonstrates that "getting internet" is not a single event but a tightl
 network-analysis-portfolio/
 │
 ├── images/
-│   └── portfolio_architecture_overview.png # Global portfolio visual diagram
 │
 ├── wireshark-labs/
 │   ├── core-infrastructure-protocols/     # Part 1: DHCP, DNS, ARP

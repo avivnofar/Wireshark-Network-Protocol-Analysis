@@ -23,19 +23,19 @@ Connecting to `test.rebex.net` as `anonymous` with an email address password exp
 * **The Sniffing Demonstration:** Because FTP transmits both control commands and data sessions in cleartext, searching for the string filter `ftp` in Wireshark immediately exposes the authentication handshake.
 * *Packet Inspection Details:* Wireshark captures Command `USER anonymous` (Response `331 Anonymous login OK`) and the subsequent `PASS` command containing the exact, unencrypted email address entered. Directory listings (`ls`) and file data payloads (`get readme.txt`) are fully reconstructed from raw TCP streams with zero decoding required.
 
-![FTP Cleartext Exposure](screenshots/RM_resources/02_ftp_wireshark_cleartext_RM.jpg)
+![FTP Cleartext Exposure](screenshots/RM_resources/02_ftp_wireshark_cleartext_RM.png)
 
 ### 2. Telnet Plaintext Streaming vs. SSH Binary Isolation
 Executing `telnet towel.blinkenlights.nl` opens an unencrypted ASCII stream over Port 23. The server begins streaming an animation of Star Wars in pure text format.
 * **The Telnet Visual Exposure:** Inspecting the raw Wireshark data packets or selecting "Follow TCP Stream" allows an observer to read the exact text characters forming the animation frames directly from the wire. Every keystroke and server character arrives naked.
 
 ![Telnet StarWars CMD](screenshots/RM_resources/03_telnet_starwars_cmd_RM.png)
-![Telnet Byte Visibility](screenshots/RM_resources/04_telnet_cleartext_bytes_RM.jpg)
+![Telnet Byte Visibility](screenshots/RM_resources/04_telnet_cleartext_bytes_RM.png)
 
 * **The SSH/SFTP Countermeasure (Port 22):** Initiating an SSH/SFTP session presents a completely different packet footprint. Following the initial TCP handshake, Wireshark captures an `SSH_MSG_KEXINIT` exchange where both sides negotiate cryptographic algorithms (e.g., AES-GCM, Diffie-Hellman key exchange). 
 * Once the keys are established, **every subsequent packet appears as high-entropy pseudo-random binary data**. There are no readable words, no usernames, and no commands. The data stream is mathematically unreadable to unauthorized collectors.
 
-![SSH Encrypted Payload](screenshots/RM_resources/05_ssh_encrypted_bytes_RM.jpg)
+![SSH Encrypted Payload](screenshots/RM_resources/05_ssh_encrypted_bytes_RM.png)
 
 ### 3. NTP Infrastructure Synchronization (`ntp`)
 To maintain cross-domain log accuracy and prevent authentication replays, system times must remain synchronous. The `w32tm /resync` command forces an outbound request over **NTP (UDP Port 123)**.

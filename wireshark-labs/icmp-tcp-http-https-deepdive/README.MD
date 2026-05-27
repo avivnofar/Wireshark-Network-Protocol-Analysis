@@ -24,7 +24,7 @@ When pinging `google.com`, the host transmits a series of 32-byte ICMP Echo Requ
 * **The TTL Phenomenon:** The baseline default TTL for Windows outbound IP packets is `128`. Upon capturing Google's incoming Echo Reply packets, the Wireshark inspection reveals an arriving `TTL = 115`. 
 * **The Math:** Knowing that every Layer 3 router decrements the TTL field by exactly 1 to prevent infinite routing loops, we calculate: `128 - 115 = 13`. The packets traversed exactly **13 network hops** to reach Google's server and return.
 
-![ICMP and Tracert Analysis](screenshots/RM_resources/02_icmp_tracert_wireshark_RM.jpg)
+![ICMP and Tracert Analysis](screenshots/RM_resources/02_icmp_tracert_wireshark_RM.png)
 
 ### 2. The TCP Three-Way Handshake (`tcp`)
 Before any HTTP or HTTPS application payload can stream, TCP must establish a reliable, stateful virtual circuit. Wireshark captures this "red-handed" via flag transitions:
@@ -39,8 +39,8 @@ Conversely, `curl https://google.com` triggers a massive structural evolution:
 * **The TLS Handshake:** Following the TCP handshake, a multi-packet cryptographic dance occurs: *Client Hello* (offering ciphers) -> *Server Hello* (selecting ciphers and presenting Google's SSL Certificate) -> *Key Exchange* (establishing ephemeral symmetric keys).
 * **OCSP Certificate Validation:** Wireshark captures automated sub-requests checking Online Certificate Status Protocol (OCSP). The browser automatically contacts the Certificate Authority (CA) to ask: *"Is this Google certificate still valid or has it been revoked?"* before passing data.
 
-![HTTP Curl Cleartext](screenshots/RM_resources/03_http_curl_wireshark_RM.jpg)
-![TCP and TLS Cryptographic Handshake](screenshots/RM_resources/04_tcp_tls_handshake_RM.jpg)
+![HTTP Curl Cleartext](screenshots/RM_resources/03_http_curl_wireshark_RM.png)
+![TCP and TLS Cryptographic Handshake](screenshots/RM_resources/04_tcp_tls_handshake_RM.png)
 
 ### 📊 Structural Comparison Matrix
 | Architectural Step | HTTP (`example.com`) | HTTPS (`google.com`) |
