@@ -1,94 +1,63 @@
-# Network Diagnostics & Secure Transport Analysis: ICMP, TCP, HTTP/HTTPS & TLS
+# Part 2: Web Transit Mechanics & Transport Layer Security (ICMP, TCP, HTTP/S, TLS, OCSP)
 
-## 📊 Project Presentation & Quick Links
-* 📂 **[Click here to view the full Presentation Slides (PDF) directly in your browser](./project-walkthrough.pdf)**
-* 📦 **[Browse Raw Wireshark Capture Files (.pcapng)](./captures/)**
-
----
-
-## 📌 Project Brief & Objectives
-This comprehensive hands-on lab demonstrates technical competency in network diagnostics, transport layer reliability, and application layer security. By capturing live traffic streams across multiple layers of the OSI model, I isolated and evaluated core routing mechanisms, cryptographic handshakes, and the structural differences between cleartext and encrypted web protocols.
-
-<p align="center">
-  <img src="screenshots/RM_resources/01_project_brief_RM.png" width="90%" alt="Project Brief and Objectives">
-</p>
+## 🧪 Experimental Thesis
+The human web experience relies on a structural paradox: Application data must be delivered with absolute reliability and end-to-end confidentiality, yet the underlying network layer is inherently unreliable and public. This lab analyzes the performance and architectural differences between simple, naked transport streams (ICMP/HTTP) and complex, cryptographically wrapped application tunnels (HTTPS/TLS).
 
 ---
 
-## 🛠️ Diagnostics & Methodology
-* **Network Analyzer:** Wireshark v4.6.5
-* **Execution Utility:** Windows Command Prompt (CMD) & `curl` CLI
-* **Target Scenarios:** Diagnostic probing, L4 connection lifecycles, unencrypted Layer 7 fetching vs. cryptographic secure sessions.
+## 🛠️ Methodology & Environment Triggers
+The host targeted public web endpoints using administrative commands to trigger specific layer interaction:
+1. `ping google.com` — Generates raw ICMP control traffic to test Layer 3 reachability.
+2. `tracert google.com` — Incrementally drops IP Time-to-Live metrics to map intermediate routed hops.
+3. `curl http://example.com` — Generates a standard unencrypted Layer 7 HTTP session.
+4. `curl https://google.com` — Initiates an encrypted Layer 7 HTTPS session wrapped in a TLS tunnel.
+5. `netstat -an` — Captures a static snapshot of all active, open, and terminating TCP sockets on the local machine.
+
+![Project Brief](screenshots/RM_resources/01_project_brief_RM.png)
 
 ---
 
-## 🔍 Layer-by-Layer Protocol Deep Dive
+## 🔍 Deep-Packet Inspection & Architectural Analysis
 
-### 1. Network Layer Diagnostics: ICMP (Ping & Traceroute)
-* **Wireshark Filters:** `icmp`
-* **CLI Execution:** `ping google.com` / `tracert google.com`
+### 1. ICMP Diagnostic Flow & TTL Calculus (`icmp`)
+When pinging `google.com`, the host transmits a series of 32-byte ICMP Echo Requests. 
+* **The TTL Phenomenon:** The baseline default TTL for Windows outbound IP packets is `128`. Upon capturing Google's incoming Echo Reply packets, the Wireshark inspection reveals an arriving `TTL = 115`. 
+* **The Math:** Knowing that every Layer 3 router decrements the TTL field by exactly 1 to prevent infinite routing loops, we calculate: `128 - 115 = 13`. The packets traversed exactly **13 network hops** to reach Google's server and return.
 
-This section isolates the Behavior of the Internet Control Message Protocol (ICMP). By evaluating Echo Requests/Replies and tracking Time-to-Live (TTL) decrements, I analyzed hop-by-hop traversal across the WAN.
+![ICMP and Tracert Analysis](screenshots/RM_resources/02_icmp_tracert_wireshark_RM.jpg)
 
-<p align="center">
-  <img src="screenshots/RM_resources/02_icmp_tracert_wireshark_RM.jpg" width="95%" alt="ICMP Traceroute Stream Analysis">
-  <br>
-  <em>Figure 1: ICMP packet stream mapping out TTL progression and router response mapping.</em>
-</p>
+### 2. The TCP Three-Way Handshake (`tcp`)
+Before any HTTP or HTTPS application payload can stream, TCP must establish a reliable, stateful virtual circuit. Wireshark captures this "red-handed" via flag transitions:
+1. `[SYN]`: Client sends an initial Sequence Number ($Seq=0$ relative).
+2. `[SYN-ACK]`: Server acknowledges the client ($Ack=1$) and provides its own Sequence Number.
+3. `[ACK]`: Client acknowledges the server ($Seq=1$, $Ack=1$). The pipe is open.
 
-**Key Insights:**
-* **TTL Architecture:** Documented standard Windows TTL initiation ($TTL=128$) versus intermediate router decrements, verifying exactly 13 logical routing hops to destination.
-* **Sequence Verification:** Validated strict 1:1 Transaction matching via internal ICMP Sequence numbers.
+### 3. HTTP Cleartext vs. HTTPS/TLS Cryptographic Overhead
+Executing `curl http://example.com` reveals a rapid, raw process: Handshake -> Plaintext `GET / HTTP/1.1` -> Plaintext `HTTP/1.1 200 OK` Response. The payload is entirely readable within Wireshark's packet bytes pane.
 
----
+Conversely, `curl https://google.com` triggers a massive structural evolution:
+* **The TLS Handshake:** Following the TCP handshake, a multi-packet cryptographic dance occurs: *Client Hello* (offering ciphers) -> *Server Hello* (selecting ciphers and presenting Google's SSL Certificate) -> *Key Exchange* (establishing ephemeral symmetric keys).
+* **OCSP Certificate Validation:** Wireshark captures automated sub-requests checking Online Certificate Status Protocol (OCSP). The browser automatically contacts the Certificate Authority (CA) to ask: *"Is this Google certificate still valid or has it been revoked?"* before passing data.
 
-### 2. Application Layer Contrast: HTTP Cleartext Analysis
-* **Wireshark Filters:** `http`
-* **CLI Execution:** `curl http://example.com`
+![HTTP Curl Cleartext](screenshots/RM_resources/03_http_curl_wireshark_RM.jpg)
+![TCP and TLS Cryptographic Handshake](screenshots/RM_resources/04_tcp_tls_handshake_RM.jpg)
 
-To analyze an unencrypted session, `curl` was utilized to generate a standard HTTP GET request. The stream exposes how plain-text protocols transmit payload architecture natively without encryption overhead.
+### 📊 Structural Comparison Matrix
+| Architectural Step | HTTP (`example.com`) | HTTPS (`google.com`) |
+| :--- | :---: | :---: |
+| **DNS Lookup** | Yes | Yes |
+| **TCP Handshake** | 3 Packets | 3 Packets |
+| **TLS Cryptographic Tunnel** | ❌ None | **Yes (Client/Server Hello)** |
+| **Identity & Revocation Check** | ❌ None | **Yes (OCSP Validation)** |
+| **Data Payload Visibility** | **Fully Readable (Cleartext)** | **Fully Encrypted (Ciphertext)** |
+| **Target Port Destination** | Port 80 | Port 443 |
 
-<p align="center">
-  <img src="screenshots/RM_resources/03_http_curl_wireshark_RM.jpg" width="95%" alt="HTTP Cleartext Protocol Inspection">
-  <br>
-  <em>Figure 2: Inspection of plain text HTTP GET and 200 OK Response string.</em>
-</p>
+![HTTP vs HTTPS Diagram](screenshots/RM_resources/05_http_https_comparison_RM.png)
 
-**Key Insights:**
-* **Total Exposure:** Application payload strings, server identities, and content architecture are completely readable within the packet byte-stream, demonstrating high vulnerability to sniffing attacks.
-
----
-
-### 3. Cryptographic Security & Transport Layer: TCP, TLS, and OCSP
-* **Wireshark Filters:** `tcp` / `tls` / `ocsp`
-* **CLI Execution:** `curl https://google.com`
-
-This section tracks the complex transition from transport layer reliability to high-assurance data privacy via HTTPS on TCP Port 443.
-
-<p align="center">
-  <img src="screenshots/RM_resources/04_tcp_tls_handshake_RM.jpg" width="95%" alt="TCP and TLS Handshake Capture Sequence">
-  <br>
-  <em>Figure 3: Combined capture capturing the Layer 4 3-Way Handshake immediately followed by the TLS Cryptographic Handshake.</em>
-</p>
-
-**Key Insights:**
-* **Layer 4 Reliability:** Isolated the standard TCP 3-Way Handshake sequence: `SYN` $\rightarrow$ `SYN-ACK` $\rightarrow$ `ACK`.
-* **Asymmetric to Symmetric Transition:** Dissected the TLS negotiation sequence including `Client Hello` (cipher suite proposals) and `Server Hello` (certificate provisioning).
-* **Identity Assurance (OCSP):** Captured Online Certificate Status Protocol (OCSP) queries verifying real-time certificate validation and non-revocation status with the Certificate Authority (CA).
+### 4. Socket State Analysis via `netstat`
+Running `netstat -an` exposes the ephemeral lifecycle of these connections. Connections to Google's servers appear in a `TIME_WAIT` state. This is an intentional TCP mechanism: the local OS holds the socket open briefly after close to absorb any stray, delayed packets still traveling across the internet, preventing socket reuse corruption.
 
 ---
 
-## 📊 Comprehensive Protocol Comparison (HTTP vs. HTTPS)
-
-The core architectural differences between a standard web connection and a secure deployment are outlined in the evaluation matrix below:
-
-<p align="center">
-  <img src="screenshots/RM_resources/05_http_https_comparison_RM.png" width="85%" alt="HTTP vs HTTPS Protocol Matrix">
-</p>
-
----
-
-## 📂 Repository Structure Reference
-* `/captures/` - Raw packet captures (`.pcapng`) for ICMP, Traceroute, and Curl sessions.
-* `/screenshots/RM_resources/` - Granular visual step documentation.
-* `project-walkthrough.pdf` - Consolidated slide presentation for executive review.
+## 💡 Key Takeaway
+Security introduces complexity. While HTTP completes its transaction in milliseconds over a single naked TCP pipe, HTTPS demands mathematical verification, certificate chain checks, and real-time revocation validations. In modern engineering, this minor performance overhead is non-negotiable for ensuring absolute user privacy.

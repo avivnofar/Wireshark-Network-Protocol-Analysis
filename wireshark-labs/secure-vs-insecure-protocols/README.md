@@ -1,91 +1,60 @@
-# Application Layer Security Analysis: Cleartext vs. Encrypted Protocols (FTP, Telnet, SSH & NTP)
+# Part 3: Cryptographic Evaluation of Application Protocols (FTP vs. SFTP/SSH, Telnet, NTP)
 
-## 📊 Project Presentation & Lab Captures
-* 📂 **[Click here to view the full Project Walkthrough Slides (PDF)](./project-walkthrough.pdf)**
-* 📦 **[Browse Raw Wireshark Capture Files (.pcapng)](./captures/)**
-
----
-
-## 📌 Project Brief & Objectives
-The final phase of this Wireshark packet analysis series evaluates Layer 7 (Application Layer) security architectures and core network infrastructure support. By contrasting legacy cleartext communication protocols against modern cryptographic implementations, this lab demonstrates the operational risk of plain-text data exposure on the wire and underscores the necessity of encryption in transit.
-
-<p align="center">
-  <img src="screenshots/01_project_brief_RM.png" width="90%" alt="Project Brief and Objectives">
-</p>
+## 🧪 Experimental Thesis
+Application layer protocols designed in the early eras of networking prioritized functional simplicity over cryptographic isolation. In a modern threat landscape, running these legacy protocols is an active vulnerability. This lab sets up explicit sessions with remote terminal, file transfer, and time endpoints to contrast unencrypted cleartext protocols against high-entropy secure alternatives.
 
 ---
 
-## 🛠️ Diagnostics & Methodology
-* **Network Analyzer:** Wireshark v4.6.5
-* **Execution Utility:** Windows Command Prompt (CMD), native administrative utilities (`pkgmgr`), and protocol-specific client connections.
-* **Core Concepts Covered:** Application layer encapsulation, cleartext credential exposure, TCP stream reconstruction, asymmetric-to-symmetric key exchange, and network time synchronization.
+## 🛠️ Methodology & Environment Triggers
+Using built-in Windows network engines and custom clients, sessions were initiated while Wireshark recorded the wire:
+1. `ftp test.rebex.net` — Connects to a public test file server using unencrypted FTP.
+2. `telnet towel.blinkenlights.nl` — Opens a legacy plaintext terminal session to stream a custom text animation.
+3. `ssh` / `sftp` — Connects to a secure encrypted shell/file infrastructure (running over Port 22).
+4. `w32tm /resync` — Forces an administrative Windows Time synchronization over Network Time Protocol (NTP).
+
+![Project Brief](screenshots/RM_resources/01_project_brief_RM.png)
 
 ---
 
-## 🔍 Protocol Deep Dive & Packet Analysis
+## 🔍 Deep-Packet Inspection & Cryptographic Breakdown
 
-### 1. Insecure File Transfers: FTP Analysis
-* **Wireshark Filter:** `ftp`
-* **Target Server:** `test.rebex.net`
-* **Captured File:** `01_ftp_cleartext_transfer.pcapng`
+### 1. The Anatomy of an FTP Compromise (`ftp`)
+Connecting to `test.rebex.net` as `anonymous` with an email address password exposes the critical vulnerability of FTP (Port 21). 
+* **The Sniffing Demonstration:** Because FTP transmits both control commands and data sessions in cleartext, searching for the string filter `ftp` in Wireshark immediately exposes the authentication handshake.
+* *Packet Inspection Details:* Wireshark captures Command `USER anonymous` (Response `331 Anonymous login OK`) and the subsequent `PASS` command containing the exact, unencrypted email address entered. Directory listings (`ls`) and file data payloads (`get readme.txt`) are fully reconstructed from raw TCP streams with zero decoding required.
 
-An anonymous file transfer session was established over TCP Port 21 to request and fetch a text payload. Because FTP uses distinct control and data channels without underlying TLS encapsulation, all application parameter commands and arguments are broadcast openly.
+![FTP Cleartext Exposure](screenshots/RM_resources/02_ftp_wireshark_cleartext_RM.jpg)
 
-**Wireshark Analysis:**
-Inspecting the network stream exposes the fundamental structural flaw of legacy file delivery protocols. Authentication strings, response codes, and system parameters are captured entirely in plain text.
+### 2. Telnet Plaintext Streaming vs. SSH Binary Isolation
+Executing `telnet towel.blinkenlights.nl` opens an unencrypted ASCII stream over Port 23. The server begins streaming an animation of Star Wars in pure text format.
+* **The Telnet Visual Exposure:** Inspecting the raw Wireshark data packets or selecting "Follow TCP Stream" allows an observer to read the exact text characters forming the animation frames directly from the wire. Every keystroke and server character arrives naked.
 
-<p align="center">
-  <img src="screenshots/02_ftp_wireshark_cleartext_RM.jpg" width="95%" alt="FTP Cleartext Leakage in Wireshark">
-  <br>
-  <em>Figure 1: Complete transparency of FTP parameters, commands, and client configuration on the wire.</em>
-</p>
+![Telnet StarWars CMD](screenshots/RM_resources/03_telnet_starwars_cmd_RM.png)
+![Telnet Byte Visibility](screenshots/RM_resources/04_telnet_cleartext_bytes_RM.jpg)
 
----
+* **The SSH/SFTP Countermeasure (Port 22):** Initiating an SSH/SFTP session presents a completely different packet footprint. Following the initial TCP handshake, Wireshark captures an `SSH_MSG_KEXINIT` exchange where both sides negotiate cryptographic algorithms (e.g., AES-GCM, Diffie-Hellman key exchange). 
+* Once the keys are established, **every subsequent packet appears as high-entropy pseudo-random binary data**. There are no readable words, no usernames, and no commands. The data stream is mathematically unreadable to unauthorized collectors.
 
-### 2. Plaintext Terminal Emulation: Telnet Analysis
-* **Wireshark Filter:** `telnet`
-* **Target Server:** `towel.blinkenlights.nl`
-* **Captured File:** `03_telnet_cleartext_session.pcapng`
+![SSH Encrypted Payload](screenshots/RM_resources/05_ssh_encrypted_bytes_RM.jpg)
 
-Telnet enables remote terminal-to-terminal emulation via TCP Port 23. To safely benchmark its architectural layout, a connection was instantiated to a public text-rendering server displaying an ASCII animation sequence.
-
-<p align="center">
-  <img src="screenshots/03_telnet_starwars_cmd_RM.png" width="90%" alt="Telnet Command Execution">
-  <br>
-  <em>Figure 2: Establishing a plain-text Telnet session via Command Prompt.</em>
-</p>
-
-**Wireshark Analysis:**
-Reconstructing the transport stream highlights Telnet's severe vulnerabilities. Because every character typed or returned is serialized inside independent, unencrypted TCP segments, an adversary running a packet sniffer can extract the entire transaction seamlessly.
-
-<p align="center">
-  <img src="screenshots/04_telnet_cleartext_bytes_RM.jpg" width="95%" alt="Telnet Stream Decoding in Wireshark">
-  <br>
-  <em>Figure 3: Intercepted TCP data tracking showing character-by-character transmission of the session payload.</em>
-</p>
+### 3. NTP Infrastructure Synchronization (`ntp`)
+To maintain cross-domain log accuracy and prevent authentication replays, system times must remain synchronous. The `w32tm /resync` command forces an outbound request over **NTP (UDP Port 123)**.
+* **Packet Footprint:** NTP operates purely over UDP for speed. Wireshark captures a simple, highly precise packet structure detailing root delay, root dispersion, and reference timestamps accurate to fractions of a millisecond.
 
 ---
 
-### 3. Cryptographically Protected Remote Access: SSH Analysis
-* **Wireshark Filter:** `ssh`
-* **Captured Files:** `02_ssh_sftp_handshake.pcapng` & `04_ssh_encrypted_traffic.pcapng`
-
-To validate modern protective design patterns, a secure alternative was audited using the Secure Shell (SSH) protocol on TCP Port 22. SSH counters sniffing vulnerabilities by using a cryptographic handshake (such as Diffie-Hellman) to establish symmetric session keys.
-
-**Wireshark Analysis:**
-Following the initialization phase, all subsequent upper-layer payload segments are completely masked. The raw packet data is wrapped into generic encrypted payload definitions, ensuring data confidentiality and preventing session hijacking or intermediate manipulation.
-
-<p align="center">
-  <img src="screenshots/05_ssh_encrypted_bytes_RM.jpg" width="95%" alt="SSH Encrypted Segment Verification">
-  <br>
-  <em>Figure 4: Secure encapsulation showing that upper-layer payloads are fully obfuscated on the network layer.</em>
-</p>
+## 🔬 Protocol Security Matrix (Definitive Portfolio Conclusion)
+| Protocol Name | Default Destination Port | Transport Protocol | Cryptographic Protection | Vulnerable to Sniffing? |
+| :--- | :---: | :---: | :---: | :---: |
+| **Telnet** | 23 | TCP | ❌ None (Cleartext) | 🔴 **YES** |
+| **SSH** | 22 | TCP |  Asymmetric Key / Symmetric Cipher | 🟢 NO |
+| **FTP** | 21 | TCP | ❌ None (Cleartext) | 🔴 **YES** |
+| **SFTP** | 22 | TCP |  SSH Cryptographic Wrapper | 🟢 NO |
+| **HTTP** | 80 | TCP | ❌ None (Cleartext) | 🔴 **YES** |
+| **HTTPS** | 443 | TCP |  TLS / Cert Validation | 🟢 NO |
+| **NTP** | 123 | UDP | ❌ None (Baseline Mode) | 🟡 Payload Visible (Time Only) |
 
 ---
 
-### 4. Infrastructure Synchronization: NTP (Network Time Protocol)
-* **Wireshark Filter:** `ntp`
-* **Port / Protocol:** Port 123 / UDP
-* **Captured File:** `05_ntp_clock_synchronization.pcapng`
-
-Network time synchronization is critical for log validation, timestamping cryptographic certificates, and managing stateful operations. A manual synchronization event was triggered using the Windows Time configuration architecture
+## 📑 Portfolio Conclusion
+This rigorous multi-part lab structure proves that modern network administration requires deep-packet consciousness. By watching protocols transition from discovery (Part 1), through transit (Part 2), to cryptographic isolation (Part 3), this portfolio establishes a robust, engineering-focused understanding of active network communication mechanics.

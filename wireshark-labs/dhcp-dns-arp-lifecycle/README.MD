@@ -1,92 +1,95 @@
-# Network Protocol Analysis: DHCP, DNS, and ARP Lifecycle
+# Network Protocol Analysis Portfolio: A Deep-Dive Wireshark & CLI Examination
 
-## 📊 Project Presentation & Quick Links
-* 📂 **[Click here to view the full Presentation Slides (PDF) directly in your browser](./project-walkthrough.pdf)**
-* 📦 **[Raw Wireshark Capture File (.pcapng)](./captures/restart%20dns%20flow%20capture.pcapng)**
+![Portfolio Banner](images/portfolio_architecture_overview.png)
 
----
+## Project Overview
+Welcome to my Network Analysis Portfolio. This repository serves as an advanced, empirical study of network protocols across the OSI model layers. The core methodology follows a rigorous experimental approach: leveraging the Windows Command Line (CLI) to orchestrate real-world network actions and utilizing **Wireshark Deep-Packet Inspection (DPI)** to capture, parse, and analyze the underlying network traffic "red-handed."
 
-## 📌 Project Brief
-This hands-on lab demonstrates practical network analysis and troubleshooting techniques by capturing and dissecting core network protocols (**DHCP, DNS, and ARP**). By systematically manipulating the Windows network stack via the command line, I generated real-world traffic scenarios to analyze packet structures, handshakes, and protocol mechanics under Wireshark.
-
-<p align="center">
-  <img src="screenshots/RM_resources/01 project_brief_RM.png" width="90%" alt="Project Brief Overview">
-</p>
+Rather than treating protocols as theoretical abstractions, this portfolio treats the live network as a laboratory—testing hypotheses about protocol behavior, timing, architectural overhead, and cryptographic states.
 
 ---
 
-## 🛠️ Tools & Methodology
-* **Network Analyzer:** Wireshark v4.6.5
-* **Environment:** Windows 11 Environment
-* **Diagnostic CLI Tools:** Windows Command Prompt (CMD)
+## Portfolio Narrative Arc
+The repository is structured into three progressive labs, moving from basic link and local infrastructure provisioning up to application-layer security eva# Part 1: Core Network Troubleshooting & Infrastructure Provisioning (DHCP, DNS, ARP)
 
-### Test Execution Strategy:
-To cleanly capture the protocol lifecycle without background network noise, the local adapter state was altered using targeted commands:
-1. `ipconfig /release` - Forces the client to surrender its current IP lease to the DHCP server.
-2. `ipconfig /flushdns` - Clears the local DNS cache to guarantee fresh query generation.
-3. `ipconfig /renew` - Triggers a fresh lease allocation sequence, initiating the protocol flow.
+## 🧪 Experimental Thesis
+When a local network host experiences an interface state reset, it must systematically rebuild its logical identity, resolve baseline names, and map its physical broadcast domain before any external Layer 3 routing can take place. This lab triggers a controlled network lease eviction to capture and analyze this foundational initialization sequence.
 
 ---
 
-## 🔍 Detailed Protocol Analysis
+## 🛠️ Methodology & Environment Triggers
+Using an administrative Windows Command Prompt, the local host cache and interface environments were completely flushed and renewed while Wireshark captured live traffic on the active interface:
 
-### 1. DHCP & The 4-Stage DORA Process
-* **Wireshark Filter:** `dhcp` or `bootp`
+1. **Eviction:** `ipconfig /release` — Relinquishes the current IPv4 lease, dropping connectivity and setting the interface address to `0.0.0.0`.
+2. **Purge:** `ipconfig /flushdns` — Flushes the local DNS Resolver Cache to force active outbound resolution.
+3. **Reconstitution:** `ipconfig /renew` — Triggers an immediate multi-protocol discovery sequence to acquire a new lease, resolve authoritative gateways, and populate local tables.
 
-During normal execution, a standard `ipconfig /renew` on an active interface often triggers an optimized **2-stage handshake** (Request -> ACK) because the lease configuration is remembered. 
-
-To force and observe the classic, complete **4-stage DORA process**, a cold connection sequence was simulated by cycling the interface completely. 
-
-<p align="center">
-  <img src="screenshots/RM_resources/04 wireshark_dora_RM.png" width="95%" alt="DHCP DORA 4-Stage Capture">
-  <br>
-  <em>Figure 1: Full DHCP DORA negotiation sequence (Discover, Offer, Request, ACK).</em>
-</p>
-
-**Analysis Breakdown:**
-* **Discover (0.0.0.0 $\rightarrow$ 255.255.255.255):** The client broadcasts to locate any available DHCP server.
-* **Offer:** The server proposes an available IP address configuration.
-* **Request:** The client formally requests the offered configuration.
-* **ACK:** The server acknowledges and commits the network configuration lease.
+![Project Brief](screenshots/RM_resources/01_project_brief_RM.png)
 
 ---
 
-### 2. DNS Resolution Sequence
-* **Wireshark Filter:** `dns`
+## 🔍 Deep-Packet Inspection & Architectural Analysis
 
-Following the cache purge, an `nslookup google.com` command was executed to capture the raw name-to-IP resolution sequence.
+### 1. The DHCP DORA Cycle (`bootp` / `dhcp`)
+The execution of `ipconfig /renew` initiates the 4-stage **DORA** transaction. Since the client begins with no valid logical identity, it leverages Layer 2 and Layer 3 broadcasts to discover provisioning infrastructure:
 
-<p align="center">
-  <img src="screenshots/RM_resources/03 wireshark_dns_RM.jpg" width="95%" alt="DNS Wireshark Dissection">
-  <br>
-  <em>Figure 2: DNS Query and Response lifecycle over UDP Port 53.</em>
-</p>
+* **Discover:** Sent from source IP `0.0.0.0` to broadcast address `255.255.255.255` over UDP Port 67. This packet searches for any available DHCP Server within the broadcast domain.
+* **Offer:** The local DHCP Server (typically the home gateway) responds with a proposed IP address configuration, subnet mask, lease duration, and gateway address.
+* **Request:** The client broadcasts back, explicitly stating its intent to accept the configuration offered by that specific server.
+* **ACK (Acknowledgment):** The server commits the lease to its database and sends a final confirmation to the client, activating the logical interface.
 
-**Key Observations:**
-* **Layer 4 Transport:** Resolution relies strictly on **UDP** to eliminate connection setup overhead and maximize speed.
-* **Port Destination:** Traffic targets standard destination **Port 53**.
-* **Transaction ID Validation:** The individual Query and Response packet pairs were validated and matched using their unique hexadecimal Transaction IDs.
+![DHCP DORA Capture](screenshots/RM_resources/04_wireshark_dora_RM.png)
 
----
+### 2. DNS Resolution Sequence (`dns`)
+With a fresh lease assigned, background applications and system components immediately issue outbound DNS requests. Because the local DNS cache was completely purged via `/flushdns`, Windows cannot read from local RAM; it is forced to construct a raw DNS Query packet directed at the newly assigned DNS server over UDP port 53.
+* *Packet Inspection Details:* The capture isolates standard queries (Type A for IPv4, Type AAAA for IPv6) followed by authoritative server responses detailing the target domain's public IPs.
 
-### 3. ARP (Address Resolution Protocol) Mapping
-* **Wireshark Filter:** `arp`
+![DNS Resolution Capture](screenshots/RM_resources/03_wireshark_dns_RM.png)
 
-Simultaneously, ARP packets were captured as the client device broadcasted queries to discover the physical hardware addresses (MAC) corresponding to local destination IPs (such as the default gateway).
+### 3. ARP Hardware Address Mapping (`arp`)
+Before the host can send an IP packet to its local gateway or any peer on the subnet, it knows the logical target IP but lacks the destination destination hardware address (MAC). It triggers an Address Resolution Protocol (ARP) Request:
+* **The Broadcast:** The packet is sent to the broadcast MAC address `ff:ff:ff:ff:ff:ff` asking: *"Who has 192.168.1.1? Tell 192.168.1.X"*.
+* **The Reply:** The gateway intercepts the broadcast and returns a unicast ARP Reply stating its exact physical MAC address, allowing the host to build its local L2 frame headers and populate its local ARP table.
 
-<p align="center">
-  <img src="screenshots/RM_resources/02 wireshark_arp_RM.jpg" width="95%" alt="ARP Broadcast Capture">
-  <br>
-  <em>Figure 3: ARP Request broadcast and Point-to-Point Reply sequence.</em>
-</p>
-
-**Key Observations:**
-* **Hardware Binding:** Documented the mapping sequence translating Layer 3 IP addresses to Layer 2 MAC addresses.
-* **Broadcast Mechanism:** The Request packet targets the broadcast MAC (`ff:ff:ff:ff:ff:ff`), forcing all nodes to listen, while the Reply is an efficient unicast direct to the requester.
+![ARP Mapping Capture](screenshots/RM_resources/02_wireshark_arp_RM.jpg)
 
 ---
 
-## 📂 Repository Structure Reference
-* `/captures/` - Contains the live `.pcapng` packet capture stream.
-* `/screenshots/RM_resources/` - Holds documentation assets and structural figures.
-* `project-walkthrough.pdf` - Full executive slide presentation.
+## 💡 Key Takeaway
+This lab demonstrates that "getting internet" is not a single event but a tightly orchestrated cascade. Without the successful completion of the **L2 ARP broadcast**, the host remains blind inside its local domain. Without **DHCP**, it remains stateless. Without **DNS**, it remains isolated from the human-readable web.
+1. **[Part 1: Core Network Troubleshooting & Infrastructure (DHCP, DNS, ARP)](./wireshark-labs/core-infrastructure-protocols/)**
+   * *The Thesis:* Restatements of local network interfaces force deterministic state-reconfiguration sequences through discovery and provisioning protocols.
+2. **[Part 2: Web Transit Mechanics & Transport Layer Security (ICMP, TCP, HTTP/S, TLS, OCSP)](./wireshark-labs/web-transit-protocols/)**
+   * *The Thesis:* Transitioning from cleartext web delivery to encrypted application transit imposes measurable architectural overhead but establishes critical cryptographic assurance.
+3. **[Part 3: Cryptographic Evaluation of Application Protocols (FTP, SFTP, SSH, Telnet, NTP)](./wireshark-labs/secure-vs-insecure-protocols/)**
+   * *The Thesis:* Legacy application-layer protocols expose raw payloads to trivial sniffing vectors, demanding a complete migration to high-entropy encrypted binary streams.
+
+---
+
+## Directory Structure
+```text
+network-analysis-portfolio/
+│
+├── images/
+│   └── portfolio_architecture_overview.png # Global portfolio visual diagram
+│
+├── wireshark-labs/
+│   ├── core-infrastructure-protocols/     # Part 1: DHCP, DNS, ARP
+│   │   ├── captures/                      # Live PCAPNG captures
+│   │   ├── screenshots/
+│   │   │   └── RM_resources/              # Documented screenshots for README
+│   │   └── README.md
+│   │
+│   ├── web-transit-protocols/             # Part 2: ICMP, TCP, HTTP, HTTPS, TLS, OCSP
+│   │   ├── captures/                      # Live PCAPNG captures
+│   │   ├── screenshots/
+│   │   │   └── RM_resources/              # Documented screenshots for README
+│   │   └── README.md
+│   │
+│   └── secure-vs-insecure-protocols/      # Part 3: FTP, SFTP, SSH, Telnet, NTP
+│       ├── captures/                      # Live PCAPNG captures
+│       ├── screenshots/
+│       │   └── RM_resources/              # Documented screenshots for README
+│       └── README.md
+│
+└── README.md                              # This Master File
