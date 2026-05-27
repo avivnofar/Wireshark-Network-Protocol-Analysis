@@ -53,4 +53,23 @@ The portfolio is structured into three dedicated labs mapped to the OSI model la
 
 #### 📊 Top Visual Findings from the Lab:
 
-* **Phase A: Plaintext Credential Exposure in FTP** Demonstrating how the FTP protocol transmits authorization primitives (`USER` and `PASS`) unencrypted
+* **Phase A: Plaintext Credential Exposure in FTP** Demonstrating how the FTP protocol transmits authorization primitives (`USER` and `PASS`) unencrypted, allowing instant credential extraction directly from the raw TCP stream:
+  ![FTP Cleartext Exposure](images/03-secure-vs-insecure-protocols/01_ftp_wireshark_cleartext_RM.png)
+
+* **Phase B: Telnet Vulnerability Demonstration (Blinkenlights Animation)** An active Telnet connection to a remote server showcasing the unencrypted character streaming mechanism, illustrating how display frames and terminal commands pass without any layer of defensive masking:
+  ![Telnet Star Wars Command](images/03-secure-vs-insecure-protocols/02_telnet_starwars_cmd_RM.png)
+
+* **Phase C: Plaintext Payload Analysis in Telnet** An analytical inspection inside Wireshark’s *Follow TCP Stream* window, demonstrating that every individual typed character in a Telnet session is fully readable by network eavesdroppers:
+  ![Telnet Cleartext Bytes](images/03-secure-vs-insecure-protocols/03_telnet_cleartext_bytes_RM.png)
+
+* **Phase D: Stream Encryption and High Entropy in SSH** In stark contrast, evaluating an active SSH session demonstrates how all application-layer payloads are entirely converted into high-entropy cryptographic blocks, effectively neutralizing packet-sniffing attempts:
+  ![SSH Encrypted Payload](images/03-secure-vs-insecure-protocols/04_ssh_encrypted_bytes_RM.png)
+
+🔍 **[View Full Documentation & PCAP Files for Project 3](./wireshark-labs/secure-vs-insecure-protocols/)**
+
+---
+
+## 🛠️ Toolset & Technologies Overview
+* **Wireshark (DPI):** Tailored display filters for traffic isolation, TCP/UDP stream reassembly, and protocol flag dissection.
+* **Windows CLI & Network Utilities:** Advanced usage of `ipconfig`, `ping`, `tracert`, `curl`, and `netstat` for deliberate traffic generation.
+* **Git & GitHub:** Version control architecture managing both documentation markdown and raw capture payloads (`.pcapng`).
