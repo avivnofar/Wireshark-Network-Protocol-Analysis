@@ -42,7 +42,7 @@ This is the most advanced lab in the portfolio. It shifts perspective from passi
 
 Injecting a fake MAC address into the ARP table to redirect traffic away from the real router. The key finding: `arp -s` without specifying an interface applies to whichever adapter Windows picks — in this case the VirtualBox adapter instead of Wi-Fi. Using `netsh interface ipv4 add neighbors 14` targets the correct interface precisely.
 
-![ARP Poisoning](images/04-system-attacking-defending-methods/06_arp_poisoning.png")
+![ARP Poisoning](images/04-system-attacking-defending-methods/06_arp_poisoning.png)
 
 ---
 
